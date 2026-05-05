@@ -3,12 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pong Personalizzato - Liceo Classico</title>
+    <title>Pong Rounded - Rosso Blu Rosa</title>
+    <link href="https://fonts.googleapis.com/css2?family=Varela+Round&display=swap" rel="stylesheet">
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700&display=swap');
-        
         body {
-            background-color: #111;
+            background-color: #1a1a1a;
             color: #fff;
             display: flex;
             flex-direction: column;
@@ -16,174 +15,168 @@
             justify-content: center;
             height: 100vh;
             margin: 0;
-            font-family: 'Orbitron', sans-serif;
+            /* Applichiamo il carattere Rounded ovunque */
+            font-family: 'Varela Round', sans-serif;
             overflow: hidden;
         }
 
         h1 {
             margin-bottom: 20px;
-            letter-spacing: 5px;
-            text-shadow: 0 0 10px rgba(255,255,255,0.3);
+            font-size: 2.5rem;
+            letter-spacing: -1px;
+            color: #ff69b4; /* Rosa */
+            text-shadow: 2px 2px 0px #fff;
         }
 
         canvas {
             background-color: #000;
-            border: 4px solid #fff;
-            box-shadow: 0 0 30px rgba(0, 0, 0, 0.5);
+            /* Bordi arrotondati anche per il campo da gioco */
+            border: 6px solid #fff;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
             cursor: none;
         }
 
-        .stats {
-            margin-top: 15px;
-            font-size: 1.2rem;
-            color: #ffc0cb; /* Rosa */
+        .score-board {
+            display: flex;
+            justify-content: space-around;
+            width: 800px;
+            font-size: 3rem;
+            margin-bottom: 10px;
         }
+
+        .user-score { color: #ff4d4d; } /* Rosso */
+        .com-score { color: #4d4dff; }  /* Blu */
     </style>
 </head>
 <body>
 
-    <h1>PONG CUSTOM</h1>
+    <h1>ROUNDED PONG</h1>
+    
+    <div class="score-board">
+        <div id="userScore" class="user-score">0</div>
+        <div id="comScore" class="com-score">0</div>
+    </div>
+
     <canvas id="pong" width="800" height="400"></canvas>
-    <div class="stats" id="status">LIVELLO: 1</div>
 
     <script>
         const canvas = document.getElementById("pong");
         const ctx = canvas.getContext("2d");
-        const statusTxt = document.getElementById("status");
 
-        let scoreTotal = 0;
-
-        // Definizione Oggetti
+        // Parametri Gioco
         const ball = {
             x: canvas.width / 2,
             y: canvas.height / 2,
-            radius: 10,
+            radius: 12, // Leggermente più grande per sembrare più "morbida"
             speed: 7,
-            velocityX: 5,
-            velocityY: 5,
-            color: "#FF69B4" // Rosa Shocking
+            vx: 5,
+            vy: 5,
+            color: "#FF69B4" // ROSA
         };
 
         const user = {
-            x: 10,
+            x: 15,
             y: 150,
-            width: 15,
-            height: 100,
+            w: 15,
+            h: 90,
             score: 0,
-            color: "#FF0000" // Rosso
+            color: "#FF4D4D" // ROSSO
         };
 
         const com = {
-            x: canvas.width - 25,
+            x: canvas.width - 30,
             y: 150,
-            width: 15,
-            height: 100,
+            w: 15,
+            h: 90,
             score: 0,
-            color: "#0000FF" // Blu
+            color: "#4D4DFF" // BLU
         };
 
-        // Input Mouse
-        canvas.addEventListener("mousemove", (e) => {
-            let rect = canvas.getBoundingClientRect();
-            user.y = e.clientY - rect.top - user.height / 2;
-        });
-
-        // Funzioni di Disegno
-        function drawRect(x, y, w, h, color) {
+        // Funzione per disegnare rettangoli arrotondati
+        function drawRoundedRect(x, y, w, h, r, color) {
             ctx.fillStyle = color;
-            ctx.fillRect(x, y, w, h);
+            ctx.beginPath();
+            ctx.moveTo(x + r, y);
+            ctx.arcTo(x + w, y, x + w, y + h, r);
+            ctx.arcTo(x + w, y + h, x, y + h, r);
+            ctx.arcTo(x, y + h, x, y, r);
+            ctx.arcTo(x, y, x + w, y, r);
+            ctx.closePath();
+            ctx.fill();
         }
 
         function drawBall(x, y, r, color) {
             ctx.fillStyle = color;
             ctx.beginPath();
-            ctx.arc(x, y, r, 0, Math.PI * 2, false);
-            ctx.closePath();
+            ctx.arc(x, y, r, 0, Math.PI * 2);
             ctx.fill();
         }
 
-        function drawNet() {
-            for (let i = 0; i <= canvas.height; i += 15) {
-                drawRect(canvas.width / 2 - 1, i, 2, 10, "#333");
-            }
-        }
+        canvas.addEventListener("mousemove", (e) => {
+            let rect = canvas.getBoundingClientRect();
+            user.y = e.clientY - rect.top - user.h / 2;
+        });
 
-        function resetBall() {
+        function reset() {
             ball.x = canvas.width / 2;
             ball.y = canvas.height / 2;
-            ball.velocityX = -ball.velocityX;
-            ball.speed = 7 + Math.floor(scoreTotal / 2); // Aumenta con i punti
+            ball.vx = -ball.vx;
+            ball.speed = 7;
         }
 
-        function collision(b, p) {
-            return b.x + b.radius > p.x && b.y + b.radius > p.y && 
-                   b.x - b.radius < p.x + p.width && b.y - b.radius < p.y + p.height;
-        }
-
-        // Logica di Gioco
         function update() {
-            ball.x += ball.velocityX;
-            ball.y += ball.velocityY;
+            ball.x += ball.vx;
+            ball.y += ball.vy;
 
-            // AI Computer
-            let aiEase = 0.06 + (Math.min(scoreTotal * 0.01, 0.1)); 
-            com.y += (ball.y - (com.y + com.height / 2)) * aiEase;
+            // AI
+            com.y += (ball.y - (com.y + com.h / 2)) * 0.08;
 
-            // Rimbalzo Pareti
+            // Bordi
             if (ball.y + ball.radius > canvas.height || ball.y - ball.radius < 0) {
-                ball.velocityY = -ball.velocityY;
+                ball.vy = -ball.vy;
             }
 
-            // Punti
+            // Punteggio
             if (ball.x < 0) {
                 com.score++;
-                scoreTotal++;
-                resetBall();
+                document.getElementById("comScore").innerText = com.score;
+                reset();
             } else if (ball.x > canvas.width) {
                 user.score++;
-                scoreTotal++;
-                resetBall();
+                document.getElementById("userScore").innerText = user.score;
+                reset();
             }
 
-            // Collisioni Racchette
-            let player = (ball.x < canvas.width / 2) ? user : com;
-
-            if (collision(ball, player)) {
-                let collidePoint = (ball.y - (player.y + player.height / 2)) / (player.height / 2);
-                let angleRad = (Math.PI / 4) * collidePoint;
-                let direction = (ball.x < canvas.width / 2) ? 1 : -1;
-
-                ball.velocityX = direction * ball.speed * Math.cos(angleRad);
-                ball.velocityY = ball.speed * Math.sin(angleRad);
-                ball.speed += 0.2;
+            // Collisione
+            let p = (ball.x < canvas.width / 2) ? user : com;
+            if (ball.x + ball.radius > p.x && ball.x - ball.radius < p.x + p.w && ball.y + ball.radius > p.y && ball.y - ball.radius < p.y + p.h) {
+                let collidePoint = (ball.y - (p.y + p.h / 2)) / (p.h / 2);
+                let angle = (Math.PI / 4) * collidePoint;
+                let dir = (ball.x < canvas.width / 2) ? 1 : -1;
+                ball.vx = dir * ball.speed * Math.cos(angle);
+                ball.vy = ball.speed * Math.sin(angle);
+                ball.speed += 0.4;
             }
-
-            statusTxt.innerText = "LIVELLO: " + (Math.floor(scoreTotal / 3) + 1);
         }
 
-        // Rendering
         function render() {
-            drawRect(0, 0, canvas.width, canvas.height, "#000"); // Pulisci
-            drawNet();
+            // Sfondo pulito
+            ctx.fillStyle = "#000";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            // Punteggi
-            ctx.fillStyle = "#fff";
-            ctx.font = "45px Orbitron";
-            ctx.fillText(user.score, canvas.width / 4, canvas.height / 5);
-            ctx.fillText(com.score, 3 * canvas.width / 4, canvas.height / 5);
+            // Rete stilizzata
+            for (let i = 10; i < canvas.height; i += 30) {
+                drawRoundedRect(canvas.width / 2 - 2, i, 4, 15, 2, "#333");
+            }
 
-            // Elementi colorati
-            drawRect(user.x, user.y, user.width, user.height, user.color);
-            drawRect(com.x, com.y, com.width, com.height, com.color);
+            // Disegno elementi arrotondati
+            drawRoundedRect(user.x, user.y, user.w, user.h, 8, user.color);
+            drawRoundedRect(com.x, com.y, com.w, com.h, 8, com.color);
             drawBall(ball.x, ball.y, ball.radius, ball.color);
         }
 
-        function game() {
-            update();
-            render();
-        }
-
-        setInterval(game, 1000 / 60);
+        setInterval(() => { update(); render(); }, 1000 / 60);
     </script>
 </body>
 </html>
