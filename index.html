@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pong Rainbow Edition</title>
+    <title>Rainbow Pong - Chroma Edition</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700&display=swap');
         
         body {
-            background-color: #050505;
-            color: white;
+            background-color: #000;
+            color: #fff;
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -19,148 +19,160 @@
             font-family: 'Orbitron', sans-serif;
             overflow: hidden;
         }
-        canvas {
-            background-color: #000;
-            border: 4px solid #fff; /* Verrà sovrascritto dal JS */
-            box-shadow: 0 0 40px rgba(255, 255, 255, 0.1);
-            cursor: none;
-        }
-        .hud {
+
+        .header {
             text-align: center;
             margin-bottom: 20px;
         }
-        h1 { 
-            margin: 0; 
-            font-size: 2.5em;
-            letter-spacing: 8px;
-            background: linear-gradient(to right, red, orange, yellow, green, cyan, blue, violet);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
+
+        h1 {
+            font-size: 3rem;
+            margin: 0;
+            letter-spacing: 10px;
+            text-shadow: 0 0 20px rgba(255,255,255,0.5);
+            animation: rainbowText 5s infinite linear;
+        }
+
+        @keyframes rainbowText {
+            0% { color: #ff0000; }
+            20% { color: #ffff00; }
+            40% { color: #00ff00; }
+            60% { color: #00ffff; }
+            80% { color: #0000ff; }
+            100% { color: #ff00ff; }
+        }
+
+        canvas {
+            background-color: #000;
+            border: 5px solid #fff;
+            box-shadow: 0 0 50px rgba(255, 255, 255, 0.1);
+            cursor: none;
+        }
+
+        #lvl {
+            font-size: 1.2rem;
+            margin-top: 10px;
+            color: #555;
         }
     </style>
 </head>
 <body>
 
-    <div class="hud">
-        <h1>RAINBOW PONG</h1>
-        <div id="lvl" style="color: #aaa; margin-top: 5px;">LIVELLO 1</div>
+    <div class="header">
+        <h1>CHROMA PONG</h1>
+        <div id="lvl">STADIO: 1</div>
     </div>
     
-    <canvas id="pong" width="800" height="400"></canvas>
+    <canvas id="pong" width="800" height="450"></canvas>
 
     <script>
         const canvas = document.getElementById("pong");
         const ctx = canvas.getContext("2d");
-        const lvlDisplay = document.getElementById("lvl");
+        const lvlTxt = document.getElementById("lvl");
 
-        let hue = 0; // Variabile per il ciclo dei colori
-        let scoreTotal = 0;
+        let hue = 0;
+        let scoreCount = 0;
 
-        const user = { x: 10, y: 150, width: 12, height: 90, score: 0 };
-        const com = { x: canvas.width - 22, y: 150, width: 12, height: 90, score: 0 };
-        const ball = { x: canvas.width / 2, y: canvas.height / 2, radius: 10, vX: 5, vY: 5, speed: 7 };
+        const user = { x: 10, y: 175, w: 15, h: 100, score: 0, color: "#fff" };
+        const com = { x: canvas.width - 25, y: 175, w: 15, h: 100, score: 0, color: "#fff" };
+        const ball = { x: canvas.width / 2, y: canvas.height / 2, r: 10, sp: 7, vx: 5, vy: 5 };
 
-        // Funzione per ottenere il colore arcobaleno corrente
-        function getRainbowColor(h) {
-            return `hsl(${h}, 100%, 60%)`;
-        }
+        // Gestione mouse
+        canvas.addEventListener("mousemove", e => {
+            let b = canvas.getBoundingClientRect();
+            user.y = e.clientY - b.top - user.h / 2;
+        });
 
-        function drawRect(x, y, w, h, color) {
+        function drawRect(x, y, w, h, color, glow) {
             ctx.fillStyle = color;
-            ctx.shadowBlur = 20;
-            ctx.shadowColor = color;
+            if (glow) {
+                ctx.shadowBlur = 25;
+                ctx.shadowColor = color;
+            }
             ctx.fillRect(x, y, w, h);
             ctx.shadowBlur = 0;
         }
 
-        function drawArc(x, y, r, color) {
+        function drawBall(x, y, r, color) {
             ctx.fillStyle = color;
-            ctx.shadowBlur = 25;
+            ctx.shadowBlur = 30;
             ctx.shadowColor = color;
             ctx.beginPath();
-            ctx.arc(x, y, r, 0, Math.PI * 2, false);
+            ctx.arc(x, y, r, 0, Math.PI * 2);
             ctx.fill();
             ctx.shadowBlur = 0;
         }
 
-        canvas.addEventListener("mousemove", (e) => {
-            let r = canvas.getBoundingClientRect();
-            user.y = e.clientY - r.top - user.height / 2;
-        });
-
-        function resetBall() {
+        function reset() {
             ball.x = canvas.width / 2;
             ball.y = canvas.height / 2;
-            ball.vX = (ball.vX > 0 ? -1 : 1) * ball.speed;
-            ball.vY = 5 * (Math.random() > 0.5 ? 1 : -1);
-        }
-
-        function collision(b, p) {
-            return b.x + b.radius > p.x && b.y + b.radius > p.y && 
-                   b.x - b.radius < p.x + p.width && b.y - b.radius < p.y + p.height;
+            ball.vx = -ball.vx;
+            ball.sp = 7 + (Math.floor(scoreCount / 2));
         }
 
         function update() {
-            // Incremento ciclo arcobaleno
-            hue = (hue + 2) % 360;
-            canvas.style.borderColor = getRainbowColor(hue);
+            hue = (hue + 1.5) % 360;
+            let rainbow = `hsl(${hue}, 100%, 60%)`;
+            let rainbowInv = `hsl(${(hue + 180) % 360}, 100%, 60%)`;
+            
+            canvas.style.borderColor = rainbow;
+            user.color = rainbow;
+            com.color = rainbowInv;
 
-            if (ball.x < 0) { com.score++; scoreTotal++; resetBall(); }
-            else if (ball.x > canvas.width) { user.score++; scoreTotal++; resetBall(); }
+            ball.x += ball.vx;
+            ball.y += ball.vy;
 
-            ball.x += ball.vX;
-            ball.y += ball.vY;
+            // AI Logic
+            let aiSkill = 0.05 + (Math.min(scoreCount * 0.01, 0.15));
+            com.y += (ball.y - (com.y + com.h / 2)) * aiSkill;
 
-            // Difficoltà aumenta ogni 2 punti
-            let level = Math.floor(scoreTotal / 2) + 1;
-            lvlDisplay.innerText = "LIVELLO " + level;
-            let aiSpeed = 0.05 + (level * 0.015);
-
-            com.y += (ball.y - (com.y + com.height / 2)) * Math.min(aiSpeed, 0.18);
-
-            if (ball.y + ball.radius > canvas.height || ball.y - ball.radius < 0) {
-                ball.vY = -ball.vY;
+            // Bordi
+            if (ball.y + ball.r > canvas.height || ball.y - ball.r < 0) {
+                ball.vy = -ball.vy;
             }
 
-            let player = (ball.x < canvas.width / 2) ? user : com;
+            // Punti
+            if (ball.x < 0) { com.score++; scoreCount++; reset(); }
+            if (ball.x > canvas.width) { user.score++; scoreCount++; reset(); }
 
-            if (collision(ball, player)) {
-                let cp = (ball.y - (player.y + player.height / 2)) / (player.height / 2);
-                let angle = (Math.PI / 4) * cp;
+            // Collisioni
+            let p = (ball.x < canvas.width / 2) ? user : com;
+            if (ball.x + ball.r > p.x && ball.x - ball.r < p.x + p.w && ball.y + ball.r > p.y && ball.y - ball.r < p.y + p.h) {
+                let collidePoint = (ball.y - (p.y + p.h / 2)) / (p.h / 2);
+                let angle = (Math.PI / 4) * collidePoint;
                 let dir = (ball.x < canvas.width / 2) ? 1 : -1;
-                
-                ball.vX = dir * ball.speed * Math.cos(angle);
-                ball.vY = ball.speed * Math.sin(angle);
-                ball.speed += 0.2;
+                ball.vx = dir * ball.sp * Math.cos(angle);
+                ball.vy = ball.sp * Math.sin(angle);
+                ball.sp += 0.3;
             }
+
+            lvlTxt.innerText = "STADIO: " + (Math.floor(scoreCount / 2) + 1);
         }
 
         function render() {
-            // Effetto "Motion Blur" (scia): non puliamo completamente lo schermo
+            // Motion Blur
             ctx.fillStyle = "rgba(0, 0, 0, 0.15)";
             ctx.fillRect(0, 0, canvas.width, canvas.height);
-            
-            // Rete dinamica
-            for (let i = 0; i <= canvas.height; i += 30) {
-                drawRect((canvas.width - 2) / 2, i, 2, 15, "rgba(255,255,255,0.2)");
+
+            // Rete
+            for (let i = 0; i < canvas.height; i += 40) {
+                drawRect(canvas.width / 2 - 1, i, 2, 20, "rgba(255,255,255,0.1)", false);
             }
 
-            // Punteggi
-            ctx.fillStyle = "white";
+            // Testi
+            ctx.fillStyle = "#fff";
             ctx.font = "60px Orbitron";
-            ctx.fillText(user.score, canvas.width / 4, canvas.height / 5);
-            ctx.fillText(com.score, 3 * canvas.width / 4, canvas.height / 5);
+            ctx.textAlign = "center";
+            ctx.fillText(user.score, canvas.width / 4, 80);
+            ctx.fillText(com.score, 3 * canvas.width / 4, 80);
 
-            // Elementi Arcobaleno
-            let colorStr = getRainbowColor(hue);
-            let colorStrInv = getRainbowColor((hue + 180) % 360); // Colore opposto
-
-            drawRect(user.x, user.y, user.width, user.height, colorStr);
-            drawRect(com.x, com.y, com.width, com.height, colorStrInv);
-            drawArc(ball.x, ball.y, ball.radius, "#fff"); // Palla bianca per contrasto o colorStr per full RGB
+            // Racchette e Palla
+            drawRect(user.x, user.y, user.w, user.h, user.color, true);
+            drawRect(com.x, com.y, com.w, com.h, com.color, true);
+            drawBall(ball.x, ball.y, ball.r, "#fff");
         }
 
-        setInterval(() => { update(); render(); }, 1000 / 50);
+        setInterval(() => { update(); render(); }, 1000 / 60);
     </script>
 </body>
 </html>
