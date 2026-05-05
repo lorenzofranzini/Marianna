@@ -3,11 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pong Pro - Neon Edition</title>
+    <title>Pong Rainbow Edition</title>
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700&display=swap');
+        
         body {
             background-color: #050505;
-            color: #0ff;
+            color: white;
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -19,29 +21,29 @@
         }
         canvas {
             background-color: #000;
-            border: 2px solid #0ff;
-            box-shadow: 0 0 20px #0ff, inset 0 0 10px #0ff;
+            border: 4px solid #fff; /* Verrà sovrascritto dal JS */
+            box-shadow: 0 0 40px rgba(255, 255, 255, 0.1);
             cursor: none;
         }
-        .ui-container {
+        .hud {
             text-align: center;
-            margin-bottom: 15px;
+            margin-bottom: 20px;
         }
         h1 { 
             margin: 0; 
-            text-transform: uppercase; 
-            letter-spacing: 10px;
-            text-shadow: 0 0 10px #0ff;
+            font-size: 2.5em;
+            letter-spacing: 8px;
+            background: linear-gradient(to right, red, orange, yellow, green, cyan, blue, violet);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
         }
-        #levelDisplay { font-size: 1.5em; color: #f0f; text-shadow: 0 0 10px #f0f; }
     </style>
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
 </head>
 <body>
 
-    <div class="ui-container">
-        <h1>Neon Pong</h1>
-        <div id="levelDisplay">LIVELLO: 1</div>
+    <div class="hud">
+        <h1>RAINBOW PONG</h1>
+        <div id="lvl" style="color: #aaa; margin-top: 5px;">LIVELLO 1</div>
     </div>
     
     <canvas id="pong" width="800" height="400"></canvas>
@@ -49,57 +51,48 @@
     <script>
         const canvas = document.getElementById("pong");
         const ctx = canvas.getContext("2d");
-        const levelEl = document.getElementById("levelDisplay");
+        const lvlDisplay = document.getElementById("lvl");
 
-        let currentLevel = 1;
-        let pointsPerLevel = 3;
+        let hue = 0; // Variabile per il ciclo dei colori
+        let scoreTotal = 0;
 
-        const user = { x: 10, y: 150, width: 12, height: 90, score: 0, color: "#0ff" };
-        const com = { x: canvas.width - 22, y: 150, width: 12, height: 90, score: 0, color: "#f0f" };
-        const ball = { x: canvas.width / 2, y: canvas.height / 2, radius: 8, velocityX: 5, velocityY: 5, speed: 7, color: "#fff" };
+        const user = { x: 10, y: 150, width: 12, height: 90, score: 0 };
+        const com = { x: canvas.width - 22, y: 150, width: 12, height: 90, score: 0 };
+        const ball = { x: canvas.width / 2, y: canvas.height / 2, radius: 10, vX: 5, vY: 5, speed: 7 };
 
-        function drawRect(x, y, w, h, color, shadowColor) {
+        // Funzione per ottenere il colore arcobaleno corrente
+        function getRainbowColor(h) {
+            return `hsl(${h}, 100%, 60%)`;
+        }
+
+        function drawRect(x, y, w, h, color) {
             ctx.fillStyle = color;
-            ctx.shadowBlur = 15;
-            ctx.shadowColor = shadowColor || color;
+            ctx.shadowBlur = 20;
+            ctx.shadowColor = color;
             ctx.fillRect(x, y, w, h);
-            ctx.shadowBlur = 0; // Reset ombra per non rallentare tutto
+            ctx.shadowBlur = 0;
         }
 
         function drawArc(x, y, r, color) {
             ctx.fillStyle = color;
-            ctx.shadowBlur = 20;
+            ctx.shadowBlur = 25;
             ctx.shadowColor = color;
             ctx.beginPath();
             ctx.arc(x, y, r, 0, Math.PI * 2, false);
-            ctx.closePath();
             ctx.fill();
             ctx.shadowBlur = 0;
         }
 
-        canvas.addEventListener("mousemove", (evt) => {
-            let rect = canvas.getBoundingClientRect();
-            user.y = evt.clientY - rect.top - user.height / 2;
+        canvas.addEventListener("mousemove", (e) => {
+            let r = canvas.getBoundingClientRect();
+            user.y = e.clientY - r.top - user.height / 2;
         });
-
-        function checkLevel() {
-            let totalScore = user.score + com.score;
-            let newLevel = Math.floor(totalScore / pointsPerLevel) + 1;
-            
-            if (newLevel > currentLevel) {
-                currentLevel = newLevel;
-                levelEl.innerText = `LIVELLO: ${currentLevel}`;
-                ball.speed += 1.5; // Aumenta velocità base
-                // Cambia colore palla in base al livello
-                ball.color = currentLevel % 2 === 0 ? "#f0f" : "#0ff";
-            }
-        }
 
         function resetBall() {
             ball.x = canvas.width / 2;
             ball.y = canvas.height / 2;
-            ball.velocityX = (Math.random() > 0.5 ? 1 : -1) * ball.speed;
-            ball.velocityY = (Math.random() > 0.5 ? 1 : -1) * ball.speed;
+            ball.vX = (ball.vX > 0 ? -1 : 1) * ball.speed;
+            ball.vY = 5 * (Math.random() > 0.5 ? 1 : -1);
         }
 
         function collision(b, p) {
@@ -108,64 +101,66 @@
         }
 
         function update() {
-            if (ball.x - ball.radius < 0) { com.score++; checkLevel(); resetBall(); }
-            else if (ball.x + ball.radius > canvas.width) { user.score++; checkLevel(); resetBall(); }
+            // Incremento ciclo arcobaleno
+            hue = (hue + 2) % 360;
+            canvas.style.borderColor = getRainbowColor(hue);
 
-            ball.x += ball.velocityX;
-            ball.y += ball.velocityY;
+            if (ball.x < 0) { com.score++; scoreTotal++; resetBall(); }
+            else if (ball.x > canvas.width) { user.score++; scoreTotal++; resetBall(); }
 
-            // AI più intelligente col salire dei livelli
-            let aiEase = 0.05 + (currentLevel * 0.02); 
-            if (aiEase > 0.2) aiEase = 0.2; // Limite massimo di difficoltà
-            com.y += (ball.y - (com.y + com.height / 2)) * aiEase;
+            ball.x += ball.vX;
+            ball.y += ball.vY;
+
+            // Difficoltà aumenta ogni 2 punti
+            let level = Math.floor(scoreTotal / 2) + 1;
+            lvlDisplay.innerText = "LIVELLO " + level;
+            let aiSpeed = 0.05 + (level * 0.015);
+
+            com.y += (ball.y - (com.y + com.height / 2)) * Math.min(aiSpeed, 0.18);
 
             if (ball.y + ball.radius > canvas.height || ball.y - ball.radius < 0) {
-                ball.velocityY = -ball.velocityY;
+                ball.vY = -ball.vY;
             }
 
             let player = (ball.x < canvas.width / 2) ? user : com;
 
             if (collision(ball, player)) {
-                let collidePoint = (ball.y - (player.y + player.height / 2)) / (player.height / 2);
-                let angleRad = (Math.PI / 4) * collidePoint;
-                let direction = (ball.x < canvas.width / 2) ? 1 : -1;
+                let cp = (ball.y - (player.y + player.height / 2)) / (player.height / 2);
+                let angle = (Math.PI / 4) * cp;
+                let dir = (ball.x < canvas.width / 2) ? 1 : -1;
                 
-                ball.velocityX = direction * ball.speed * Math.cos(angleRad);
-                ball.velocityY = ball.speed * Math.sin(angleRad);
-                ball.speed += 0.1;
+                ball.vX = dir * ball.speed * Math.cos(angle);
+                ball.vY = ball.speed * Math.sin(angle);
+                ball.speed += 0.2;
             }
         }
 
         function render() {
-            // Sfondo con leggero effetto scia
-            ctx.fillStyle = "rgba(0, 0, 0, 0.2)";
+            // Effetto "Motion Blur" (scia): non puliamo completamente lo schermo
+            ctx.fillStyle = "rgba(0, 0, 0, 0.15)";
             ctx.fillRect(0, 0, canvas.width, canvas.height);
             
-            // Rete neon
+            // Rete dinamica
             for (let i = 0; i <= canvas.height; i += 30) {
-                drawRect((canvas.width - 2) / 2, i, 2, 15, "#444");
+                drawRect((canvas.width - 2) / 2, i, 2, 15, "rgba(255,255,255,0.2)");
             }
 
             // Punteggi
-            ctx.shadowBlur = 10;
-            ctx.shadowColor = "#0ff";
-            ctx.fillStyle = "#fff";
-            ctx.font = "50px Orbitron";
+            ctx.fillStyle = "white";
+            ctx.font = "60px Orbitron";
             ctx.fillText(user.score, canvas.width / 4, canvas.height / 5);
             ctx.fillText(com.score, 3 * canvas.width / 4, canvas.height / 5);
 
-            // Giocatori e Palla
-            drawRect(user.x, user.y, user.width, user.height, user.color, "#0ff");
-            drawRect(com.x, com.y, com.width, com.height, com.color, "#f0f");
-            drawArc(ball.x, ball.y, ball.radius, ball.color);
+            // Elementi Arcobaleno
+            let colorStr = getRainbowColor(hue);
+            let colorStrInv = getRainbowColor((hue + 180) % 360); // Colore opposto
+
+            drawRect(user.x, user.y, user.width, user.height, colorStr);
+            drawRect(com.x, com.y, com.width, com.height, colorStrInv);
+            drawArc(ball.x, ball.y, ball.radius, "#fff"); // Palla bianca per contrasto o colorStr per full RGB
         }
 
-        function game() {
-            update();
-            render();
-        }
-
-        setInterval(game, 1000 / 50);
+        setInterval(() => { update(); render(); }, 1000 / 50);
     </script>
 </body>
 </html>
