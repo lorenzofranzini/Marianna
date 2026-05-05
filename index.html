@@ -3,186 +3,160 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pong Classico - Liceo Classico Edition</title>
+    <title>Pong Pro - Neon Edition</title>
     <style>
         body {
-            background-color: #1a1a1a;
-            color: #eee;
+            background-color: #050505;
+            color: #0ff;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
             height: 100vh;
             margin: 0;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: 'Orbitron', sans-serif;
             overflow: hidden;
         }
         canvas {
             background-color: #000;
-            border: 5px solid #fff;
-            box-shadow: 0 0 30px rgba(0,0,0,0.5);
-            cursor: none; /* Nasconde il mouse sopra il gioco */
+            border: 2px solid #0ff;
+            box-shadow: 0 0 20px #0ff, inset 0 0 10px #0ff;
+            cursor: none;
         }
-        h1 { margin: 10px 0; letter-spacing: 5px; }
-        .info { color: #888; margin-top: 10px; font-size: 0.9em; }
+        .ui-container {
+            text-align: center;
+            margin-bottom: 15px;
+        }
+        h1 { 
+            margin: 0; 
+            text-transform: uppercase; 
+            letter-spacing: 10px;
+            text-shadow: 0 0 10px #0ff;
+        }
+        #levelDisplay { font-size: 1.5em; color: #f0f; text-shadow: 0 0 10px #f0f; }
     </style>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
 </head>
 <body>
 
-    <h1>PONG</h1>
+    <div class="ui-container">
+        <h1>Neon Pong</h1>
+        <div id="levelDisplay">LIVELLO: 1</div>
+    </div>
+    
     <canvas id="pong" width="800" height="400"></canvas>
-    <div class="info">Muovi il mouse per giocare. La sfida ha inizio!</div>
 
     <script>
         const canvas = document.getElementById("pong");
         const ctx = canvas.getContext("2d");
+        const levelEl = document.getElementById("levelDisplay");
 
-        // Parametri Utente
-        const user = {
-            x: 0,
-            y: (canvas.height - 100) / 2,
-            width: 10,
-            height: 100,
-            score: 0,
-            color: "WHITE"
-        };
+        let currentLevel = 1;
+        let pointsPerLevel = 3;
 
-        // Parametri Computer
-        const com = {
-            x: canvas.width - 10,
-            y: (canvas.height - 100) / 2,
-            width: 10,
-            height: 100,
-            score: 0,
-            color: "WHITE"
-        };
+        const user = { x: 10, y: 150, width: 12, height: 90, score: 0, color: "#0ff" };
+        const com = { x: canvas.width - 22, y: 150, width: 12, height: 90, score: 0, color: "#f0f" };
+        const ball = { x: canvas.width / 2, y: canvas.height / 2, radius: 8, velocityX: 5, velocityY: 5, speed: 7, color: "#fff" };
 
-        // Parametri Palla
-        const ball = {
-            x: canvas.width / 2,
-            y: canvas.height / 2,
-            radius: 10,
-            velocityX: 5,
-            velocityY: 5,
-            speed: 7,
-            color: "WHITE"
-        };
-
-        // Rete
-        const net = {
-            x: (canvas.width - 2) / 2,
-            y: 0,
-            pWidth: 2,
-            pHeight: 10,
-            color: "WHITE"
-        };
-
-        // Funzioni di disegno
-        function drawRect(x, y, w, h, color) {
+        function drawRect(x, y, w, h, color, shadowColor) {
             ctx.fillStyle = color;
+            ctx.shadowBlur = 15;
+            ctx.shadowColor = shadowColor || color;
             ctx.fillRect(x, y, w, h);
+            ctx.shadowBlur = 0; // Reset ombra per non rallentare tutto
         }
 
         function drawArc(x, y, r, color) {
             ctx.fillStyle = color;
+            ctx.shadowBlur = 20;
+            ctx.shadowColor = color;
             ctx.beginPath();
-            ctx.arc(x, y, r, 0, Math.PI * 2, true);
+            ctx.arc(x, y, r, 0, Math.PI * 2, false);
             ctx.closePath();
             ctx.fill();
+            ctx.shadowBlur = 0;
         }
 
-        function drawNet() {
-            for (let i = 0; i <= canvas.height; i += 15) {
-                drawRect(net.x, net.y + i, net.pWidth, net.pHeight, net.color);
-            }
-        }
-
-        function drawText(text, x, y) {
-            ctx.fillStyle = "#FFF";
-            ctx.font = "75px Arial";
-            ctx.fillText(text, x, y);
-        }
-
-        // Movimento racchetta con mouse
         canvas.addEventListener("mousemove", (evt) => {
             let rect = canvas.getBoundingClientRect();
             user.y = evt.clientY - rect.top - user.height / 2;
         });
 
-        // Collisione
-        function collision(b, p) {
-            b.top = b.y - b.radius;
-            b.bottom = b.y + b.radius;
-            b.left = b.x - b.radius;
-            b.right = b.x + b.radius;
-
-            p.top = p.y;
-            p.bottom = p.y + p.height;
-            p.left = p.x;
-            p.right = p.x + p.width;
-
-            return b.right > p.left && b.bottom > p.top && b.left < p.right && b.top < p.bottom;
+        function checkLevel() {
+            let totalScore = user.score + com.score;
+            let newLevel = Math.floor(totalScore / pointsPerLevel) + 1;
+            
+            if (newLevel > currentLevel) {
+                currentLevel = newLevel;
+                levelEl.innerText = `LIVELLO: ${currentLevel}`;
+                ball.speed += 1.5; // Aumenta velocità base
+                // Cambia colore palla in base al livello
+                ball.color = currentLevel % 2 === 0 ? "#f0f" : "#0ff";
+            }
         }
 
-        // Reset palla
         function resetBall() {
             ball.x = canvas.width / 2;
             ball.y = canvas.height / 2;
-            ball.velocityX = -ball.velocityX;
-            ball.speed = 7;
+            ball.velocityX = (Math.random() > 0.5 ? 1 : -1) * ball.speed;
+            ball.velocityY = (Math.random() > 0.5 ? 1 : -1) * ball.speed;
         }
 
-        // Logica di aggiornamento
+        function collision(b, p) {
+            return b.x + b.radius > p.x && b.y + b.radius > p.y && 
+                   b.x - b.radius < p.x + p.width && b.y - b.radius < p.y + p.height;
+        }
+
         function update() {
-            // Punteggio
-            if (ball.x - ball.radius < 0) {
-                com.score++;
-                resetBall();
-            } else if (ball.x + ball.radius > canvas.width) {
-                user.score++;
-                resetBall();
-            }
+            if (ball.x - ball.radius < 0) { com.score++; checkLevel(); resetBall(); }
+            else if (ball.x + ball.radius > canvas.width) { user.score++; checkLevel(); resetBall(); }
 
             ball.x += ball.velocityX;
             ball.y += ball.velocityY;
 
-            // AI Computer
-            com.y += (ball.y - (com.y + com.height / 2)) * 0.1;
+            // AI più intelligente col salire dei livelli
+            let aiEase = 0.05 + (currentLevel * 0.02); 
+            if (aiEase > 0.2) aiEase = 0.2; // Limite massimo di difficoltà
+            com.y += (ball.y - (com.y + com.height / 2)) * aiEase;
 
-            // Rimbalzo pareti
-            if (ball.y - ball.radius < 0 || ball.y + ball.radius > canvas.height) {
+            if (ball.y + ball.radius > canvas.height || ball.y - ball.radius < 0) {
                 ball.velocityY = -ball.velocityY;
             }
 
-            // Controllo racchetta colpita
             let player = (ball.x < canvas.width / 2) ? user : com;
 
             if (collision(ball, player)) {
-                // Dove la palla colpisce la racchetta
-                let collidePoint = (ball.y - (player.y + player.height / 2));
-                collidePoint = collidePoint / (player.height / 2);
-
-                // Angolo di rimbalzo (max 45 gradi)
+                let collidePoint = (ball.y - (player.y + player.height / 2)) / (player.height / 2);
                 let angleRad = (Math.PI / 4) * collidePoint;
-
-                // Cambio direzione X
                 let direction = (ball.x < canvas.width / 2) ? 1 : -1;
+                
                 ball.velocityX = direction * ball.speed * Math.cos(angleRad);
                 ball.velocityY = ball.speed * Math.sin(angleRad);
-
-                // Aumenta velocità ad ogni colpo
                 ball.speed += 0.1;
             }
         }
 
-        // Rendering grafico
         function render() {
-            drawRect(0, 0, canvas.width, canvas.height, "#000"); // Sfondo
-            drawNet();
-            drawText(user.score, canvas.width / 4, canvas.height / 5);
-            drawText(com.score, 3 * canvas.width / 4, canvas.height / 5);
-            drawRect(user.x, user.y, user.width, user.height, user.color);
-            drawRect(com.x, com.y, com.width, com.height, com.color);
+            // Sfondo con leggero effetto scia
+            ctx.fillStyle = "rgba(0, 0, 0, 0.2)";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Rete neon
+            for (let i = 0; i <= canvas.height; i += 30) {
+                drawRect((canvas.width - 2) / 2, i, 2, 15, "#444");
+            }
+
+            // Punteggi
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = "#0ff";
+            ctx.fillStyle = "#fff";
+            ctx.font = "50px Orbitron";
+            ctx.fillText(user.score, canvas.width / 4, canvas.height / 5);
+            ctx.fillText(com.score, 3 * canvas.width / 4, canvas.height / 5);
+
+            // Giocatori e Palla
+            drawRect(user.x, user.y, user.width, user.height, user.color, "#0ff");
+            drawRect(com.x, com.y, com.width, com.height, com.color, "#f0f");
             drawArc(ball.x, ball.y, ball.radius, ball.color);
         }
 
@@ -191,8 +165,7 @@
             render();
         }
 
-        const framePerSecond = 50;
-        setInterval(game, 1000 / framePerSecond);
+        setInterval(game, 1000 / 50);
     </script>
 </body>
 </html>
