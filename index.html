@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Rainbow Pong - Chroma Edition</title>
+    <title>Pong Personalizzato - Liceo Classico</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700&display=swap');
         
         body {
-            background-color: #000;
+            background-color: #111;
             color: #fff;
             display: flex;
             flex-direction: column;
@@ -20,159 +20,170 @@
             overflow: hidden;
         }
 
-        .header {
-            text-align: center;
-            margin-bottom: 20px;
-        }
-
         h1 {
-            font-size: 3rem;
-            margin: 0;
-            letter-spacing: 10px;
-            text-shadow: 0 0 20px rgba(255,255,255,0.5);
-            animation: rainbowText 5s infinite linear;
-        }
-
-        @keyframes rainbowText {
-            0% { color: #ff0000; }
-            20% { color: #ffff00; }
-            40% { color: #00ff00; }
-            60% { color: #00ffff; }
-            80% { color: #0000ff; }
-            100% { color: #ff00ff; }
+            margin-bottom: 20px;
+            letter-spacing: 5px;
+            text-shadow: 0 0 10px rgba(255,255,255,0.3);
         }
 
         canvas {
             background-color: #000;
-            border: 5px solid #fff;
-            box-shadow: 0 0 50px rgba(255, 255, 255, 0.1);
+            border: 4px solid #fff;
+            box-shadow: 0 0 30px rgba(0, 0, 0, 0.5);
             cursor: none;
         }
 
-        #lvl {
+        .stats {
+            margin-top: 15px;
             font-size: 1.2rem;
-            margin-top: 10px;
-            color: #555;
+            color: #ffc0cb; /* Rosa */
         }
     </style>
 </head>
 <body>
 
-    <div class="header">
-        <h1>CHROMA PONG</h1>
-        <div id="lvl">STADIO: 1</div>
-    </div>
-    
-    <canvas id="pong" width="800" height="450"></canvas>
+    <h1>PONG CUSTOM</h1>
+    <canvas id="pong" width="800" height="400"></canvas>
+    <div class="stats" id="status">LIVELLO: 1</div>
 
     <script>
         const canvas = document.getElementById("pong");
         const ctx = canvas.getContext("2d");
-        const lvlTxt = document.getElementById("lvl");
+        const statusTxt = document.getElementById("status");
 
-        let hue = 0;
-        let scoreCount = 0;
+        let scoreTotal = 0;
 
-        const user = { x: 10, y: 175, w: 15, h: 100, score: 0, color: "#fff" };
-        const com = { x: canvas.width - 25, y: 175, w: 15, h: 100, score: 0, color: "#fff" };
-        const ball = { x: canvas.width / 2, y: canvas.height / 2, r: 10, sp: 7, vx: 5, vy: 5 };
+        // Definizione Oggetti
+        const ball = {
+            x: canvas.width / 2,
+            y: canvas.height / 2,
+            radius: 10,
+            speed: 7,
+            velocityX: 5,
+            velocityY: 5,
+            color: "#FF69B4" // Rosa Shocking
+        };
 
-        // Gestione mouse
-        canvas.addEventListener("mousemove", e => {
-            let b = canvas.getBoundingClientRect();
-            user.y = e.clientY - b.top - user.h / 2;
+        const user = {
+            x: 10,
+            y: 150,
+            width: 15,
+            height: 100,
+            score: 0,
+            color: "#FF0000" // Rosso
+        };
+
+        const com = {
+            x: canvas.width - 25,
+            y: 150,
+            width: 15,
+            height: 100,
+            score: 0,
+            color: "#0000FF" // Blu
+        };
+
+        // Input Mouse
+        canvas.addEventListener("mousemove", (e) => {
+            let rect = canvas.getBoundingClientRect();
+            user.y = e.clientY - rect.top - user.height / 2;
         });
 
-        function drawRect(x, y, w, h, color, glow) {
+        // Funzioni di Disegno
+        function drawRect(x, y, w, h, color) {
             ctx.fillStyle = color;
-            if (glow) {
-                ctx.shadowBlur = 25;
-                ctx.shadowColor = color;
-            }
             ctx.fillRect(x, y, w, h);
-            ctx.shadowBlur = 0;
         }
 
         function drawBall(x, y, r, color) {
             ctx.fillStyle = color;
-            ctx.shadowBlur = 30;
-            ctx.shadowColor = color;
             ctx.beginPath();
-            ctx.arc(x, y, r, 0, Math.PI * 2);
+            ctx.arc(x, y, r, 0, Math.PI * 2, false);
+            ctx.closePath();
             ctx.fill();
-            ctx.shadowBlur = 0;
         }
 
-        function reset() {
+        function drawNet() {
+            for (let i = 0; i <= canvas.height; i += 15) {
+                drawRect(canvas.width / 2 - 1, i, 2, 10, "#333");
+            }
+        }
+
+        function resetBall() {
             ball.x = canvas.width / 2;
             ball.y = canvas.height / 2;
-            ball.vx = -ball.vx;
-            ball.sp = 7 + (Math.floor(scoreCount / 2));
+            ball.velocityX = -ball.velocityX;
+            ball.speed = 7 + Math.floor(scoreTotal / 2); // Aumenta con i punti
         }
 
+        function collision(b, p) {
+            return b.x + b.radius > p.x && b.y + b.radius > p.y && 
+                   b.x - b.radius < p.x + p.width && b.y - b.radius < p.y + p.height;
+        }
+
+        // Logica di Gioco
         function update() {
-            hue = (hue + 1.5) % 360;
-            let rainbow = `hsl(${hue}, 100%, 60%)`;
-            let rainbowInv = `hsl(${(hue + 180) % 360}, 100%, 60%)`;
-            
-            canvas.style.borderColor = rainbow;
-            user.color = rainbow;
-            com.color = rainbowInv;
+            ball.x += ball.velocityX;
+            ball.y += ball.velocityY;
 
-            ball.x += ball.vx;
-            ball.y += ball.vy;
+            // AI Computer
+            let aiEase = 0.06 + (Math.min(scoreTotal * 0.01, 0.1)); 
+            com.y += (ball.y - (com.y + com.height / 2)) * aiEase;
 
-            // AI Logic
-            let aiSkill = 0.05 + (Math.min(scoreCount * 0.01, 0.15));
-            com.y += (ball.y - (com.y + com.h / 2)) * aiSkill;
-
-            // Bordi
-            if (ball.y + ball.r > canvas.height || ball.y - ball.r < 0) {
-                ball.vy = -ball.vy;
+            // Rimbalzo Pareti
+            if (ball.y + ball.radius > canvas.height || ball.y - ball.radius < 0) {
+                ball.velocityY = -ball.velocityY;
             }
 
             // Punti
-            if (ball.x < 0) { com.score++; scoreCount++; reset(); }
-            if (ball.x > canvas.width) { user.score++; scoreCount++; reset(); }
-
-            // Collisioni
-            let p = (ball.x < canvas.width / 2) ? user : com;
-            if (ball.x + ball.r > p.x && ball.x - ball.r < p.x + p.w && ball.y + ball.r > p.y && ball.y - ball.r < p.y + p.h) {
-                let collidePoint = (ball.y - (p.y + p.h / 2)) / (p.h / 2);
-                let angle = (Math.PI / 4) * collidePoint;
-                let dir = (ball.x < canvas.width / 2) ? 1 : -1;
-                ball.vx = dir * ball.sp * Math.cos(angle);
-                ball.vy = ball.sp * Math.sin(angle);
-                ball.sp += 0.3;
+            if (ball.x < 0) {
+                com.score++;
+                scoreTotal++;
+                resetBall();
+            } else if (ball.x > canvas.width) {
+                user.score++;
+                scoreTotal++;
+                resetBall();
             }
 
-            lvlTxt.innerText = "STADIO: " + (Math.floor(scoreCount / 2) + 1);
+            // Collisioni Racchette
+            let player = (ball.x < canvas.width / 2) ? user : com;
+
+            if (collision(ball, player)) {
+                let collidePoint = (ball.y - (player.y + player.height / 2)) / (player.height / 2);
+                let angleRad = (Math.PI / 4) * collidePoint;
+                let direction = (ball.x < canvas.width / 2) ? 1 : -1;
+
+                ball.velocityX = direction * ball.speed * Math.cos(angleRad);
+                ball.velocityY = ball.speed * Math.sin(angleRad);
+                ball.speed += 0.2;
+            }
+
+            statusTxt.innerText = "LIVELLO: " + (Math.floor(scoreTotal / 3) + 1);
         }
 
+        // Rendering
         function render() {
-            // Motion Blur
-            ctx.fillStyle = "rgba(0, 0, 0, 0.15)";
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            drawRect(0, 0, canvas.width, canvas.height, "#000"); // Pulisci
+            drawNet();
 
-            // Rete
-            for (let i = 0; i < canvas.height; i += 40) {
-                drawRect(canvas.width / 2 - 1, i, 2, 20, "rgba(255,255,255,0.1)", false);
-            }
-
-            // Testi
+            // Punteggi
             ctx.fillStyle = "#fff";
-            ctx.font = "60px Orbitron";
-            ctx.textAlign = "center";
-            ctx.fillText(user.score, canvas.width / 4, 80);
-            ctx.fillText(com.score, 3 * canvas.width / 4, 80);
+            ctx.font = "45px Orbitron";
+            ctx.fillText(user.score, canvas.width / 4, canvas.height / 5);
+            ctx.fillText(com.score, 3 * canvas.width / 4, canvas.height / 5);
 
-            // Racchette e Palla
-            drawRect(user.x, user.y, user.w, user.h, user.color, true);
-            drawRect(com.x, com.y, com.w, com.h, com.color, true);
-            drawBall(ball.x, ball.y, ball.r, "#fff");
+            // Elementi colorati
+            drawRect(user.x, user.y, user.width, user.height, user.color);
+            drawRect(com.x, com.y, com.width, com.height, com.color);
+            drawBall(ball.x, ball.y, ball.radius, ball.color);
         }
 
-        setInterval(() => { update(); render(); }, 1000 / 60);
+        function game() {
+            update();
+            render();
+        }
+
+        setInterval(game, 1000 / 60);
     </script>
 </body>
 </html>
